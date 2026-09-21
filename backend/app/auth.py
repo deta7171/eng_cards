@@ -21,6 +21,19 @@ oauth.register(
 
 COOKIE_NAME = "session"
 
+# Frontend and backend live on different domains in production (vercel.app vs
+# onrender.com), so the session cookie is sent on a cross-site fetch. Browsers
+# only attach SameSite=Lax cookies to top-level navigations, not cross-site
+# XHR/fetch, so cross-site setups need SameSite=None (which in turn requires
+# Secure). Locally frontend+backend share the "localhost" site, where Lax works
+# fine and Secure would block the cookie over plain http.
+_CROSS_SITE = settings.frontend_url.startswith("https")
+COOKIE_KWARGS = {
+    "httponly": True,
+    "samesite": "none" if _CROSS_SITE else "lax",
+    "secure": _CROSS_SITE,
+}
+
 
 def create_access_token(user_id: uuid.UUID) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.auth import COOKIE_NAME, create_access_token, get_current_user, oauth
+from app.auth import COOKIE_KWARGS, COOKIE_NAME, create_access_token, get_current_user, oauth
 from app.config import settings
 from app.database import get_db
 from app.models import User
@@ -37,14 +37,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
 
     jwt_token = create_access_token(user.id)
     response = RedirectResponse(url=f"{settings.frontend_url}/dashboard")
-    response.set_cookie(
-        COOKIE_NAME,
-        jwt_token,
-        max_age=COOKIE_MAX_AGE,
-        httponly=True,
-        samesite="lax",
-        secure=settings.frontend_url.startswith("https"),
-    )
+    response.set_cookie(COOKIE_NAME, jwt_token, max_age=COOKIE_MAX_AGE, **COOKIE_KWARGS)
     return response
 
 
@@ -55,5 +48,5 @@ def me(user: User = Depends(get_current_user)):
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie(COOKIE_NAME)
+    response.delete_cookie(COOKIE_NAME, samesite=COOKIE_KWARGS["samesite"], secure=COOKIE_KWARGS["secure"])
     return {"status": "ok"}
