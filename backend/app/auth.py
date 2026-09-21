@@ -19,22 +19,6 @@ oauth.register(
     client_kwargs={"scope": "openid email profile"},
 )
 
-COOKIE_NAME = "session"
-
-# Frontend and backend live on different domains in production (vercel.app vs
-# onrender.com), so the session cookie is sent on a cross-site fetch. Browsers
-# only attach SameSite=Lax cookies to top-level navigations, not cross-site
-# XHR/fetch, so cross-site setups need SameSite=None (which in turn requires
-# Secure). Locally frontend+backend share the "localhost" site, where Lax works
-# fine and Secure would block the cookie over plain http.
-_CROSS_SITE = settings.frontend_url.startswith("https")
-COOKIE_KWARGS = {
-    "httponly": True,
-    "samesite": "none" if _CROSS_SITE else "lax",
-    "secure": _CROSS_SITE,
-}
-
-
 def create_access_token(user_id: uuid.UUID) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {"sub": str(user_id), "exp": expire}
@@ -50,9 +34,14 @@ def decode_access_token(token: str) -> uuid.UUID:
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    token = request.cookies.get(COOKIE_NAME)
-    if not token:
+    # Bearer token in the Authorization header, not a cookie: frontend (Vercel)
+    # and backend (Render) are different sites, and browsers increasingly block
+    # third-party cookies on cross-site fetches regardless of SameSite/Secure,
+    # so a cookie-based session can silently fail to reach the API at all.
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    token = auth_header.removeprefix("Bearer ")
     user_id = decode_access_token(token)
     user = db.get(User, user_id)
     if user is None:

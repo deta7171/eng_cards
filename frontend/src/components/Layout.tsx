@@ -1,13 +1,14 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { clearToken } from "../api/client";
 
 export function Layout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  async function handleLogout() {
-    await api.post("/auth/logout");
+  function handleLogout() {
+    // JWT is stateless - nothing to invalidate server-side, just drop it locally.
+    clearToken();
     queryClient.setQueryData(["me"], null);
     navigate("/");
   }

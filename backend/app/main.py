@@ -7,16 +7,15 @@ from app.routers import auth, review, stats, suggestions, topics, words
 
 app = FastAPI(title="eng_cards API")
 
-# required by Authlib's Starlette integration to stash the OAuth `state` between
-# /auth/google/login and /auth/google/callback. Cookie name must differ from
-# our own app.auth.COOKIE_NAME ("session") or the two Set-Cookie headers
-# collide on the callback response and the real login session gets clobbered.
+# required by Authlib's Starlette integration to stash the OAuth `state`
+# between /auth/google/login and /auth/google/callback. Only used transiently
+# during that same-site redirect dance - app auth itself is a bearer token
+# (see app.auth.get_current_user), not a cookie.
 app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret, session_cookie="oauth_state")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_url],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

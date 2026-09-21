@@ -1,16 +1,16 @@
-from fastapi import APIRouter, Depends, Request, Response
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.auth import COOKIE_KWARGS, COOKIE_NAME, create_access_token, get_current_user, oauth
+from app.auth import create_access_token, get_current_user, oauth
 from app.config import settings
 from app.database import get_db
 from app.models import User
 from app.schemas import UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-COOKIE_MAX_AGE = settings.jwt_expire_minutes * 60
 
 
 @router.get("/google/login")
@@ -36,17 +36,14 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         db.refresh(user)
 
     jwt_token = create_access_token(user.id)
-    response = RedirectResponse(url=f"{settings.frontend_url}/dashboard")
-    response.set_cookie(COOKIE_NAME, jwt_token, max_age=COOKIE_MAX_AGE, **COOKIE_KWARGS)
-    return response
+    # Hand the token to the frontend via a redirect query param rather than a
+    # cookie: frontend and backend are on different sites in production, and
+    # cross-site cookies are unreliable (see app.auth.get_current_user). The
+    # frontend reads this once on /auth/callback and stores it itself.
+    query = urlencode({"token": jwt_token})
+    return RedirectResponse(url=f"{settings.frontend_url}/auth/callback?{query}")
 
 
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     return user
-
-
-@router.post("/logout")
-def logout(response: Response):
-    response.delete_cookie(COOKIE_NAME, samesite=COOKIE_KWARGS["samesite"], secure=COOKIE_KWARGS["secure"])
-    return {"status": "ok"}

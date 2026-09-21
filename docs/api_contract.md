@@ -1,7 +1,14 @@
 # API contract (MVP)
 
-Base URL: `/api`. Auth via httpOnly cookie holding a JWT, issued after Google OAuth.
-All endpoints below except `/auth/google/*` require an authenticated session.
+Base URL: `/api`. Auth via `Authorization: Bearer <jwt>` header, issued after
+Google OAuth. All endpoints below except `/auth/google/*` require it.
+
+Not a cookie: frontend (Vercel) and backend (Render) are on different sites,
+and browsers increasingly block third-party cookies on cross-site fetches
+regardless of `SameSite`/`Secure` attributes, which makes cookie-based
+sessions unreliable across separate domains. The frontend stores the token in
+`localStorage` and attaches it to every request itself; logout is just
+dropping it client-side (JWTs are stateless, nothing to invalidate server-side).
 
 ## Auth
 
@@ -10,15 +17,14 @@ Redirects to Google's OAuth consent screen.
 
 ### `GET /auth/google/callback`
 Handles the OAuth redirect: exchanges code, finds-or-creates `users` row by
-`google_id`, issues JWT as httpOnly cookie, redirects to frontend `/dashboard`.
+`google_id`, then redirects to the frontend at `/auth/callback?token=<jwt>`.
+The frontend's `/auth/callback` route stores the token and redirects to
+`/dashboard`.
 
 ### `GET /auth/me`
 ```json
 { "id": "uuid", "email": "...", "name": "...", "avatar_url": "..." }
 ```
-
-### `POST /auth/logout`
-Clears the session cookie.
 
 ---
 

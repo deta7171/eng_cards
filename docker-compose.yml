@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: eng_cards
       POSTGRES_DB: eng_cards
     ports:
-      - "5432:5432"
+      - "5433:5432" # 5432 often taken by a native Postgres install; backend talks to db:5432 internally regardless
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
