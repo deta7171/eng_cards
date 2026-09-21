@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: eng-cards-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false # set to the Neon connection string in Render's dashboard
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false # https://<render-service>.onrender.com/api/auth/google/callback
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false # https://<your-app>.vercel.app
+      - key: MYMEMORY_EMAIL
+        sync: false
