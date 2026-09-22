@@ -1,4 +1,6 @@
-from sqlalchemy import create_engine
+from datetime import datetime
+
+from sqlalchemy import DateTime, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
@@ -8,7 +10,11 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 class Base(DeclarativeBase):
-    pass
+    # Every datetime column is timestamptz (see alembic/versions/0001_initial.py).
+    # Without this, a bare `Mapped[datetime]` infers a timezone-naive column,
+    # which drifts from the actual migrated schema and produces naive
+    # datetimes that can't be compared against the aware ones fsrs expects.
+    type_annotation_map = {datetime: DateTime(timezone=True)}
 
 
 def get_db() -> Session:
